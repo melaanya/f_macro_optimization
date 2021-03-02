@@ -1,4 +1,4 @@
-# Dev-requirements
+# Dev requirements
 
 ## pyenv + virtualenv
 ```sh
@@ -9,6 +9,12 @@ echo  'eval "$(pyenv init -)"' >> ~/.bashrc
 echo  'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
 source ~/.bashrc
 git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
+```
+
+#### Create a virtual environment
+```sh
+pyenv virtualenv 3.8.6 f_macro
+pyenv activate f_macro
 ```
 
 ## Poetry
