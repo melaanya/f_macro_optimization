@@ -6,6 +6,7 @@ authors = ["Anna Berger <anna.ig.berger@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+numpy = "^1.20.1"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
