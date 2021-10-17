@@ -16,4 +16,5 @@ class EspGameLoad(unittest.TestCase):
         self.assertEqual(len(self.data), self.num_classes)
 
     def test_num_docs(self):  # noqa
-        self.assertEqual(len(self.data[0].pred), self.num_docs)
+        for categ in self.data:
+            self.assertEqual(len(categ.pred), self.num_docs)
