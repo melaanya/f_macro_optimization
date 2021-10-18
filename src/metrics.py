@@ -6,20 +6,20 @@ from .classes import Categ
 
 
 @overload
-def f1(p: float, r: float) -> float:  # noqa
+def f_beta(p: float, r: float) -> float:  # noqa
     ...
 
 
 @overload
-def f1(p: np.ndarray, r: np.ndarray) -> np.ndarray:  # noqa
+def f_beta(p: np.ndarray, r: np.ndarray) -> np.ndarray:  # noqa
     ...
 
 
 # @jit(nopython=True)
-def f1(
-    p: Union[float, np.ndarray], r: Union[float, np.ndarray]
+def f_beta(
+    p: Union[float, np.ndarray], r: Union[float, np.ndarray], beta: float = 1
 ) -> Union[float, np.ndarray]:
-    """Compute f score."""
+    """Compute f beta score."""
     if (isinstance(p, float) and p == 0) or (isinstance(r, float) and r == 0):
         return 0
 
@@ -29,7 +29,7 @@ def f1(
     if isinstance(r, np.ndarray) and np.allclose(r, 0):
         return np.zeros_like(r)
 
-    return 2 * p * r / (p + r)
+    return (1 + beta) * p * r / (beta * p + r)
 
 
 def precision_at_thr_k(data: List[Categ], k: int = 1) -> float:
@@ -62,7 +62,7 @@ def best_macro_f(data: List[Categ]) -> float:
 
             p_k_thr: float = tp * 1.0 / (tp + fp)
             r_k_thr: float = tp * 1.0 / categ.size
-            macro_f_thr = f1(p_k_thr, r_k_thr)
+            macro_f_thr = f_beta(p_k_thr, r_k_thr)
             if macro_f_thr > best_macro_f_categ:
                 best_macro_f_categ = macro_f_thr
 

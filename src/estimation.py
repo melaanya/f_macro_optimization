@@ -4,12 +4,12 @@ from numba import jit
 from numba.typed import List
 import numpy as np
 
-from .metrics import f1
+from .metrics import f_beta
 
 
 @jit(nopython=True)
 def estimate_grid(
-    data: List, num_categs: int, n_p: int, docs_number: int = -1
+    data: List, num_categs: int, n_p: int, docs_number: int = -1, beta: int = 1
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Estimating F-macro in every point of a unit square grid,
@@ -17,6 +17,7 @@ def estimate_grid(
     """
     docs_number = len(data[0].pred) if docs_number == -1 else docs_number
     num_categs = len(data) if len(data) < num_categs else num_categs
+    print(f"num categories = {num_categs}")
 
     n_r = n_p  # the same amount of points in x and y axis
     p_0, p_1, r_0, r_1 = 0.0, 1.0, 0.0, 1.0
@@ -30,7 +31,7 @@ def estimate_grid(
             map_0: float = p_0 + (p_1 - p_0) / n_p * i_p
             mar_0: float = r_0 + (r_1 - r_0) / n_r * i_r
 
-            alpha, beta = mar_0 ** 2, map_0 ** 2
+            w_1, w_2 = mar_0 ** 2, beta ** 2 * map_0 ** 2
             delta = 1.0 / num_categs
 
             eps = (
@@ -65,7 +66,7 @@ def estimate_grid(
 
                     p_k_thr: float = tp * 1.0 / (tp + fp)
                     r_k_thr: float = tp * 1.0 / categ.size
-                    d_f_macro = alpha * p_k_thr + beta * r_k_thr
+                    d_f_macro = w_1 * p_k_thr + w_2 * r_k_thr
 
                     if d_f_macro > best_d_f_macro + 1e-12:
                         best_p_k = p_k_thr
@@ -90,7 +91,7 @@ def estimate_grid(
 
                     p_k_thr = tp * 1.0 / (tp + fp)
                     r_k_thr = tp * 1.0 / categ.size
-                    d_f_macro = alpha * p_k_thr + beta * r_k_thr
+                    d_f_macro = w_1 * p_k_thr + w_2 * r_k_thr
 
                     neighb = num_categs * eps * (map_0 + mar_0) ** 2
                     if d_f_macro > best_d_f_macro - neighb:
@@ -128,6 +129,7 @@ def format_output(
     res_p: np.ndarray,
     res_r: np.ndarray,
     n_p: int,
+    beta: float = 1.0,
     left_bottom: Tuple[float, float] = (0.0, 0.0),
     right_top: Tuple[float, float] = (1.0, 1.0),
 ) -> np.ndarray:
@@ -145,7 +147,7 @@ def format_output(
     output[:, 2] = res_p[1].flatten()
     output[:, 3] = res_r[1].flatten()
 
-    output[:, 4] = f1(output[:, 2], output[:, 3])
+    output[:, 4] = f_beta(output[:, 2], output[:, 3], beta)
 
     output[:, 5] = res_p[0].flatten()  # min
     output[:, 6] = res_p[2].flatten()  # max
