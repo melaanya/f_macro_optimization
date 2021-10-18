@@ -1,5 +1,5 @@
 from typing import Tuple
-
+import scipy, scipy.spatial
 from numba import jit
 from numba.typed import List
 import numpy as np
@@ -156,3 +156,54 @@ def format_output(
     output[:, 8] = res_r[2].flatten()  # max
 
     return output
+
+
+# @jit(nopython=True)
+def estimate_DV(
+    data: List, angleCount: int, categCount: int, docsNumber: int = -1
+) -> np.ndarray:
+    """Returns coordinates of D(V) border"""
+    dAngle = 2.0 * np.pi / angleCount
+    docsNumber = len(data[0].pred) if docsNumber == -1 else docsNumber
+    categCount = len(data) if len(data) < categCount else categCount
+    i0 = 0
+    hull = np.zeros((angleCount, 2))
+    count = 0  # initial weight of start hull
+    for angle_i in range(angleCount): hull[angle_i] = [0.2, 0.2]
+    for i in range(categCount):
+        cat = data[i0+i]
+        catPR = np.zeros((cat.pred.size+1, 2))
+        tp, fp = 0, 0
+        for barrier in range(1, cat.pred.size+2):
+            if barrier <= cat.pred.size:
+                if cat.pred[barrier-1] == 1: tp += 1
+                else: fp += 1
+            else:
+                tp = cat.size
+                fp = docsNumber-cat.size
+            catPR[barrier-1, 0] = tp / (tp+fp)
+            catPR[barrier-1, 1] = tp / cat.size
+        ind = scipy.spatial.ConvexHull(catPR).vertices
+        catPR = catPR[ind,:]
+        assert len(catPR) > 1
+        for pi in range(len(catPR)):
+            prev = catPR[len(catPR)-1] if pi == 0 else catPR[pi - 1]
+            cur = catPR[pi]
+            next = catPR[0] if pi == len(catPR) - 1 else catPR[pi + 1]
+            a = complex(prev[0] - cur[0], prev[1] - cur[1])
+            b = complex(next[0] - cur[0], next[1] - cur[1])
+            phi1 = (np.angle(a) + np.pi / 2) % (2*np.pi)
+            phi2 = (np.angle(b) - np.pi / 2) % (2*np.pi)
+            if phi1 < phi2:
+                for angle_i in range(int(np.ceil(phi1 / dAngle)), int(phi2 // dAngle) + 1):
+                    hull[angle_i,0] = (hull[angle_i,0] * count + cur[0]) / (count+1)
+                    hull[angle_i,1] = (hull[angle_i,1] * count + cur[1]) / (count+1)
+            else:  # we jump over 0
+                for angle_i in range(0, int(phi2 // dAngle) + 1):
+                    hull[angle_i,0] = (hull[angle_i,0] * count + cur[0]) / (count+1)
+                    hull[angle_i,1] = (hull[angle_i,1] * count + cur[1]) / (count+1)
+                for angle_i in range(int(np.ceil(phi1 / dAngle)), angleCount):
+                    hull[angle_i,0] =  (hull[angle_i,0] * count + cur[0]) / (count+1)
+                    hull[angle_i,1] =  (hull[angle_i,1] * count + cur[1]) / (count+1)
+        count += 1
+    return hull
