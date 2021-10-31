@@ -3,8 +3,8 @@ import unittest
 from numba.typed import List
 import numpy as np
 
-from src.estimation import estimate_grid, format_output
-from src.load import load
+from src.estimation import estimate_grid
+from src.io import format_output, load
 
 
 class EspGameNNMetrics(unittest.TestCase):

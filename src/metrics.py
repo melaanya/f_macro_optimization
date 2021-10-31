@@ -15,7 +15,6 @@ def f_beta(p: np.ndarray, r: np.ndarray) -> np.ndarray:  # noqa
     ...
 
 
-# @jit(nopython=True)
 def f_beta(
     p: Union[float, np.ndarray], r: Union[float, np.ndarray], beta: float = 1
 ) -> Union[float, np.ndarray]:

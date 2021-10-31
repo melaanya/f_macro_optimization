@@ -1,10 +1,9 @@
 from typing import Tuple
-import scipy, scipy.spatial
 from numba import jit
 from numba.typed import List
 import numpy as np
 
-from .metrics import f_beta
+from .convex_hull import get_convex_hull
 
 
 @jit(nopython=True)
@@ -124,83 +123,6 @@ def estimate_grid(
     return res_p, res_r
 
 
-# @jit(nopython=True)
-def format_output(
-    res_p: np.ndarray,
-    res_r: np.ndarray,
-    n_p: int,
-    beta: float = 1.0,
-    left_bottom: Tuple[float, float] = (0.0, 0.0),
-    right_top: Tuple[float, float] = (1.0, 1.0),
-) -> np.ndarray:
-    """Format grid in expected format for further plotting."""
-    p_0, r_0 = left_bottom
-    p_1, r_1 = right_top
-    n_r = n_p
-
-    output = np.zeros(((n_p + 1) * (n_r + 1), 9), dtype=np.float64)
-    for i_p in range(n_p + 1):
-        for i_r in range(n_r + 1):
-            output[i_p * (n_p + 1) + i_r, 0] = p_0 + (p_1 - p_0) / n_p * i_p
-            output[i_p * (n_p + 1) + i_r, 1] = r_0 + (r_1 - r_0) / n_r * i_r
-
-    output[:, 2] = res_p[1].flatten()
-    output[:, 3] = res_r[1].flatten()
-
-    output[:, 4] = f_beta(output[:, 2], output[:, 3], beta)
-
-    output[:, 5] = res_p[0].flatten()  # min
-    output[:, 6] = res_p[2].flatten()  # max
-
-    output[:, 7] = res_r[0].flatten()  # min
-    output[:, 8] = res_r[2].flatten()  # max
-
-    return output
-
-
-@jit(nopython=True)
-def cross(o, a, b):
-    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-
-@jit(nopython=True)
-def get_convex_hull(p: np.array) -> np.array:
-    n = p.shape[0]
-    k = 0
-    if n == 1:
-        return p
-    hull = np.zeros((n * 2, 2))
-
-    # sort points lexicographically - problematic with numba
-    # p = np.array(sorted(p.tolist()))
-    x1 = np.sort(p[:,0])
-    dx1 = x1[1:]-x1[:-1]
-    mdx1 = np.min(dx1[dx1>0])
-    mnoj = 2/mdx1
-    ind = np.argsort(p[:,0]*mnoj + p[:,1])
-    # ind = np.lexsort(p.T)
-    p = p[ind]
-
-    # build lower hull
-    for ind, point in enumerate(p):
-        while k >= 2 and cross(hull[k - 2], hull[k - 1], point) <= 0:
-            k -= 1
-        hull[k] = point
-        k += 1
-
-    # build upper hull
-    t = k + 1
-    for ind in range(n - 2, -1, -1):
-        while k >= t and cross(hull[k - 2], hull[k - 1], p[ind]) <= 0:
-            k -= 1
-        hull[k] = p[ind]
-        k += 1
-
-    # remove trailing zeros
-    hull = hull[: (k - 1), :]
-    return hull
-
-
 @jit(nopython=True)
 def estimate_DV(
     data: List, angleCount: int, categCount: int, docsNumber: int = -1
@@ -212,42 +134,59 @@ def estimate_DV(
     i0 = 0
     hull = np.zeros((angleCount, 2))
     count = 0  # initial weight of start hull
-    for angle_i in range(angleCount): hull[angle_i] = [0.2, 0.2]
+    for angle_i in range(angleCount):
+        hull[angle_i] = [0.2, 0.2]
     for i in range(categCount):
-        cat = data[i0+i]
-        catPR = np.zeros((cat.pred.size+1, 2))
+        cat = data[i0 + i]
+        catPR = np.zeros((cat.pred.size + 1, 2))
         tp, fp = 0, 0
-        for barrier in range(1, cat.pred.size+2):
+        for barrier in range(1, cat.pred.size + 2):
             if barrier <= cat.pred.size:
-                if cat.pred[barrier-1] == 1: tp += 1
-                else: fp += 1
+                if cat.pred[barrier - 1] == 1:
+                    tp += 1
+                else:
+                    fp += 1
             else:
                 tp = cat.size
-                fp = docsNumber-cat.size
-            catPR[barrier-1, 0] = tp / (tp+fp)
-            catPR[barrier-1, 1] = tp / cat.size
+                fp = docsNumber - cat.size
+            catPR[barrier - 1, 0] = tp * 1.0 / (tp + fp)
+            catPR[barrier - 1, 1] = tp * 1.0 / cat.size
         # ind = scipy.spatial.ConvexHull(catPR).vertices
+        # catPR = catPR[ind, :]
         catPR = get_convex_hull(catPR)
-        # catPR = catPR[ind,:]
         assert len(catPR) > 1
         for pi in range(len(catPR)):
-            prev = catPR[len(catPR)-1] if pi == 0 else catPR[pi - 1]
+            prev = catPR[len(catPR) - 1] if pi == 0 else catPR[pi - 1]
             cur = catPR[pi]
             next = catPR[0] if pi == len(catPR) - 1 else catPR[pi + 1]
             a = complex(prev[0] - cur[0], prev[1] - cur[1])
             b = complex(next[0] - cur[0], next[1] - cur[1])
-            phi1 = (np.angle(a) + np.pi / 2) % (2*np.pi)
-            phi2 = (np.angle(b) - np.pi / 2) % (2*np.pi)
+            phi1 = (np.angle(a) + np.pi / 2) % (2 * np.pi)
+            phi2 = (np.angle(b) - np.pi / 2) % (2 * np.pi)
             if phi1 < phi2:
-                for angle_i in range(int(np.ceil(phi1 / dAngle)), int(phi2 // dAngle) + 1):
-                    hull[angle_i,0] = (hull[angle_i,0] * count + cur[0]) / (count+1)
-                    hull[angle_i,1] = (hull[angle_i,1] * count + cur[1]) / (count+1)
+                for angle_i in range(
+                    int(np.ceil(phi1 / dAngle)), int(phi2 // dAngle) + 1
+                ):
+                    hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
+                        count + 1
+                    )
+                    hull[angle_i, 1] = (hull[angle_i, 1] * count + cur[1]) / (
+                        count + 1
+                    )
             else:  # we jump over 0
                 for angle_i in range(0, int(phi2 // dAngle) + 1):
-                    hull[angle_i,0] = (hull[angle_i,0] * count + cur[0]) / (count+1)
-                    hull[angle_i,1] = (hull[angle_i,1] * count + cur[1]) / (count+1)
+                    hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
+                        count + 1
+                    )
+                    hull[angle_i, 1] = (hull[angle_i, 1] * count + cur[1]) / (
+                        count + 1
+                    )
                 for angle_i in range(int(np.ceil(phi1 / dAngle)), angleCount):
-                    hull[angle_i,0] = (hull[angle_i,0] * count + cur[0]) / (count+1)
-                    hull[angle_i,1] = (hull[angle_i,1] * count + cur[1]) / (count+1)
+                    hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
+                        count + 1
+                    )
+                    hull[angle_i, 1] = (hull[angle_i, 1] * count + cur[1]) / (
+                        count + 1
+                    )
         count += 1
     return hull

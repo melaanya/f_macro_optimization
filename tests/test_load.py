@@ -1,6 +1,6 @@
 import unittest
 
-from src.load import load
+from src.io import load
 
 
 class EspGameLoad(unittest.TestCase):

@@ -3,11 +3,11 @@ import unittest
 from numba.typed import List
 import numpy as np
 
-from src.estimation import estimate_DV, format_output
-from src.load import load
+from src.estimation import estimate_DV
+from src.io import load
 
 
-class EspGameNNMetrics(unittest.TestCase):
+class EspGameNNMetricsDV(unittest.TestCase):
     """."""
 
     @classmethod
@@ -16,7 +16,7 @@ class EspGameNNMetrics(unittest.TestCase):
         cls.data = List()
         [cls.data.append(x) for x in data]
 
-    def test_1000_3x3(self):  # noqa
+    def test_1000_20(self):  # noqa
         answer = np.loadtxt("./data/hulls/result_ESPGameNN_1000_20.txt")
 
         output = estimate_DV(self.data, categCount=1000, angleCount=20)

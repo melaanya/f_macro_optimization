@@ -1,6 +1,6 @@
 import unittest
 
-from src.load import load
+from src.io import load
 from src.metrics import best_macro_f, precision_at_thr_k
 
 
