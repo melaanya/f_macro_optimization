@@ -8,13 +8,13 @@ from .convex_hull import get_convex_hull
 
 @jit(nopython=True)
 def estimate_grid(
-    data: List, num_categs: int, n_p: int, docs_number: int = -1, beta: int = 1
+    data: List, num_categs: int, n_p: int, num_docs: int = -1, beta: int = 1
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Estimating F-macro in every point of a unit square grid,
     the number of points in grid is (n_p + 1) * (n_p + 1).
     """
-    docs_number = len(data[0].pred) if docs_number == -1 else docs_number
+    num_docs = len(data[0].pred) if num_docs == -1 else num_docs
     num_categs = len(data) if len(data) < num_categs else num_categs
     print(f"num categories = {num_categs}")
 
@@ -61,7 +61,7 @@ def estimate_grid(
                             fp += 1
                     else:
                         tp = categ.size
-                        fp = docs_number - categ.size
+                        fp = num_docs - categ.size
 
                     p_k_thr: float = tp * 1.0 / (tp + fp)
                     r_k_thr: float = tp * 1.0 / categ.size
@@ -86,7 +86,7 @@ def estimate_grid(
                             fp += 1
                     else:
                         tp = categ.size
-                        fp = docs_number - categ.size
+                        fp = num_docs - categ.size
 
                     p_k_thr = tp * 1.0 / (tp + fp)
                     r_k_thr = tp * 1.0 / categ.size
@@ -125,18 +125,18 @@ def estimate_grid(
 
 @jit(nopython=True)
 def estimate_DV(
-    data: List, angleCount: int, categCount: int, docsNumber: int = -1
+    data: List, num_categs: int, num_angles: int, num_docs: int = -1
 ) -> np.ndarray:
     """Returns coordinates of D(V) border"""
-    dAngle = 2.0 * np.pi / angleCount
-    docsNumber = len(data[0].pred) if docsNumber == -1 else docsNumber
-    categCount = len(data) if len(data) < categCount else categCount
+    d_angle = 2.0 * np.pi / num_angles
+    num_docs = len(data[0].pred) if num_docs == -1 else num_docs
+    num_categs = len(data) if len(data) < num_categs else num_categs
     i0 = 0
-    hull = np.zeros((angleCount, 2))
+    hull = np.zeros((num_angles, 2))
     count = 0  # initial weight of start hull
-    for angle_i in range(angleCount):
+    for angle_i in range(num_angles):
         hull[angle_i] = [0.2, 0.2]
-    for i in range(categCount):
+    for i in range(num_categs):
         cat = data[i0 + i]
         catPR = np.zeros((cat.pred.size + 1, 2))
         tp, fp = 0, 0
@@ -148,7 +148,7 @@ def estimate_DV(
                     fp += 1
             else:
                 tp = cat.size
-                fp = docsNumber - cat.size
+                fp = num_docs - cat.size
             catPR[barrier - 1, 0] = tp * 1.0 / (tp + fp)
             catPR[barrier - 1, 1] = tp * 1.0 / cat.size
         # ind = scipy.spatial.ConvexHull(catPR).vertices
@@ -165,7 +165,7 @@ def estimate_DV(
             phi2 = (np.angle(b) - np.pi / 2) % (2 * np.pi)
             if phi1 < phi2:
                 for angle_i in range(
-                    int(np.ceil(phi1 / dAngle)), int(phi2 // dAngle) + 1
+                    int(np.ceil(phi1 / d_angle)), int(phi2 // d_angle) + 1
                 ):
                     hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
                         count + 1
@@ -174,14 +174,14 @@ def estimate_DV(
                         count + 1
                     )
             else:  # we jump over 0
-                for angle_i in range(0, int(phi2 // dAngle) + 1):
+                for angle_i in range(0, int(phi2 // d_angle) + 1):
                     hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
                         count + 1
                     )
                     hull[angle_i, 1] = (hull[angle_i, 1] * count + cur[1]) / (
                         count + 1
                     )
-                for angle_i in range(int(np.ceil(phi1 / dAngle)), angleCount):
+                for angle_i in range(int(np.ceil(phi1 / d_angle)), num_angles):
                     hull[angle_i, 0] = (hull[angle_i, 0] * count + cur[0]) / (
                         count + 1
                     )
