@@ -12,13 +12,15 @@ OUTPUT_FOLDER = Path("./data/outputs/")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Linear approximation algorithm.")
+    parser.add_argument("--db_file", type=str, required=True)
     parser.add_argument("--num_categs", type=int, required=True)
     parser.add_argument("--n_p", type=int, required=True)
     parser.add_argument("--beta", type=float, default=1)
     parser.add_argument("--output_folder", type=Path, default=OUTPUT_FOLDER)
     args = parser.parse_args()
 
-    raw_data = load("./data/ESPGameNN.txt")
+    raw_data = load(args.db_file)
+    db_name = Path(args.db_file).stem
     data = List()
     [data.append(x) for x in raw_data]
 
@@ -27,12 +29,11 @@ if __name__ == "__main__":
     )
 
     output = format_output(res_p, res_r, args.n_p, args.beta)
-    postfix = f"beta_{args.beta}" if args.beta != 1 else ""
     np.savetxt(
         OUTPUT_FOLDER
         / (
-            f"python_ESPGameNN_{args.num_categs}_"
-            f"{args.n_p}x{args.n_p}_{postfix}.txt"
+            f"python_{db_name}_{args.num_categs}_"
+            f"{args.n_p}x{args.n_p}_{args.beta}.txt"
         ),
         output,
         delimiter=" ",
