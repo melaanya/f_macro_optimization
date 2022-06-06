@@ -1,20 +1,15 @@
 # Dev requirements
 
-## pyenv + virtualenv
+## pyenv
 ```sh
 git clone https://github.com/pyenv/pyenv.git ~/.pyenv
 echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
 echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-echo  'eval "$(pyenv init -)"' >> ~/.bashrc
-echo  'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 source ~/.bashrc
-git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
-```
 
-#### Create a virtual environment
-```sh
-pyenv virtualenv 3.8.6 f_macro
-pyenv activate f_macro
+cd /path/to/project/f_macro_optimization
+pyenv install 3.8.6
 ```
 
 ## Poetry
@@ -23,6 +18,7 @@ pyenv activate f_macro
 ```sh
 curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 export PATH="$HOME/.poetry/bin:$PATH"
+poetry shell
 poetry install  # install the defined dependencies for the project
 ```
 
